@@ -3,6 +3,7 @@ pragma solidity 0.8.4;
 
 import "hardhat/console.sol";
 import "./ExampleExternalContract.sol";
+import "./Interest.sol";
 
 contract Staker {
 
@@ -11,10 +12,12 @@ contract Staker {
   mapping(address => uint256) public balances;
   mapping(address => uint256) public depositTimestamps;
 
-  uint256 public constant rewardRatePerSecond = 0.1 ether;
-  uint256 public withdrawalDeadline = block.timestamp + 120 seconds;
-  uint256 public claimDeadline = block.timestamp + 240 seconds;
-  uint256 public currentBlock = 0;
+  // 10% per second, for testing purposes
+  uint256 public constant fixedApr = 630720 ether;
+  uint256 public constant rewardRatePerSecond = fixedApr / 365 / 24 / 3600;
+  uint256 public withdrawalDeadline;
+  uint256 public claimDeadline;
+  uint256 public currentBlock;
 
   // Events
   event Stake(address indexed sender, uint256 amount);
@@ -59,6 +62,20 @@ contract Staker {
 
   constructor(address exampleExternalContractAddress){
       exampleExternalContract = ExampleExternalContract(exampleExternalContractAddress);
+      reset();
+  }
+
+  /*
+  Resets ExampleExternalContract and withdraws from it
+  */
+  function reset() public {
+    if (address(exampleExternalContract).balance > 0) {
+      exampleExternalContract.withdraw();
+    }
+    exampleExternalContract.incomplete();
+    withdrawalDeadline = block.timestamp + 120 seconds;
+    claimDeadline = block.timestamp + 240 seconds;
+    currentBlock = 0;
   }
 
   // Stake function for a user to stake ETH in our contract
@@ -75,7 +92,17 @@ contract Staker {
   function withdraw() public withdrawalDeadlineReached(true) claimDeadlineReached(false) notCompleted{
     require(balances[msg.sender] > 0, "You have no balance to withdraw!");
     uint256 individualBalance = balances[msg.sender];
-    uint256 indBalanceRewards = individualBalance + ((block.timestamp-depositTimestamps[msg.sender])*rewardRatePerSecond);
+
+    Interest interest = new Interest();
+    uint256 rate = interest.yearlyRateToRay(fixedApr);
+    uint256 duration = block.timestamp-depositTimestamps[msg.sender];
+    uint256 indBalanceRewards = interest.accrueInterest(individualBalance, rate, duration);
+
+    console.log("individualBalance ", individualBalance);
+    console.log("duration, sec, ", duration);
+    console.log("rate ", rate);
+    console.log("indBalanceRewards ", indBalanceRewards);
+
     balances[msg.sender] = 0;
 
     // Transfer all ETH via call! (not transfer) cc: https://solidity-by-example.org/sending-ether
@@ -128,5 +155,4 @@ contract Staker {
   receive() external payable {
       emit Received(msg.sender, msg.value);
   }
-
 }

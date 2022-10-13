@@ -18,6 +18,10 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
     log: true,
   });
 
+  const stakerInstance = await ethers.getContract("Staker", deployer);
+  const exampleInstance = await ethers.getContract("ExampleExternalContract",deployer);
+  await exampleInstance.setupWithdrawRole(stakerInstance.address);
+
   // Getting a previously deployed contract
   //const Staker = await ethers.getContract(
   // "Staker",

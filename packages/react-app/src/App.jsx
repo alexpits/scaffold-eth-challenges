@@ -7,7 +7,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { BrowserRouter, Link, Route, Switch } from "react-router-dom";
 import Web3Modal from "web3modal";
 import "./App.css";
-import { Account, Address, Balance, Contract, Faucet, GasGauge, Header, Ramp, ThemeSwitch } from "./components";
+import { Account, Address, Balance, Contract, Faucet, GasGauge, Header, Ramp, ThemeSwitch, EtherInput } from "./components";
 import { INFURA_ID, NETWORK, NETWORKS } from "./constants";
 import { Transactor } from "./helpers";
 import {
@@ -173,6 +173,7 @@ function App(props) {
 
   const [injectedProvider, setInjectedProvider] = useState();
   const [address, setAddress] = useState();
+  const [amount, setAmount] = useState();
 
   const logoutOfWeb3Modal = async () => {
     await web3Modal.clearCachedProvider();
@@ -252,7 +253,7 @@ function App(props) {
   );
   if (DEBUG) console.log("💵 stakerContractBalance", stakerContractBalance);
 
-  const rewardRatePerSecond = useContractReader(readContracts, "Staker", "rewardRatePerBlock");
+  const rewardRatePerSecond = useContractReader(readContracts, "Staker", "rewardRatePerSecond");
   console.log("💵 Reward Rate:", rewardRatePerSecond);
 
   // ** keep track of a variable from the contract in the local React state:
@@ -290,6 +291,15 @@ function App(props) {
       <div style={{padding: 64, backgroundColor: "#eeffef", fontWeight: "bold", color: "rgba(0, 0, 0, 0.85)" }} >
         -- 💀 Staking App Fund Repatriation Executed 🪦 --
         <Balance balance={exampleExternalContractBalance} fontSize={32} /> ETH locked!
+        <div style={{ padding: 8 }}>
+          <Button
+            onClick={() => {
+              tx(writeContracts.Staker.reset());
+            }}
+          >
+            Reset!
+          </Button>
+        </div>
       </div>
     );
   }
@@ -490,28 +500,7 @@ function App(props) {
       <Header />
       {networkDisplay}
       <BrowserRouter>
-        <Menu style={{ textAlign: "center" }} selectedKeys={[route]} mode="horizontal">
-          <Menu.Item key="/">
-            <Link
-              onClick={() => {
-                setRoute("/");
-              }}
-              to="/"
-            >
-              Staker UI
-            </Link>
-          </Menu.Item>
-          <Menu.Item key="/contracts">
-            <Link
-              onClick={() => {
-                setRoute("/contracts");
-              }}
-              to="/contracts"
-            >
-              Debug Contracts
-            </Link>
-          </Menu.Item>
-        </Menu>
+
 
         <Switch>
           <Route exact path="/">
@@ -526,7 +515,7 @@ function App(props) {
 
             <div style={{ padding: 8, marginTop: 16 }}>
               <div>Reward Rate Per Second:</div>
-              <Balance balance={rewardRatePerSecond} fontSize={64} /> ETH
+              <Balance balance={rewardRatePerSecond} fontSize={64} /> (0.01 is 1%)
             </div>
 
             <Divider />
@@ -539,6 +528,17 @@ function App(props) {
             <div style={{ padding: 8, marginTop: 16, fontWeight: "bold"}}>
               <div>Withdrawal Period Left:</div>
               {withdrawalTimeLeft && humanizeDuration(withdrawalTimeLeft.toNumber() * 1000)}
+            </div>
+
+            <div style={{ padding: 8 }}>
+              <Button
+                type={"default"}
+                onClick={() => {
+                  tx(writeContracts.Staker.killTime());
+                }}
+              >
+                Kill Time!
+              </Button>
             </div>
 
             <Divider />
@@ -577,16 +577,23 @@ function App(props) {
               </Button>
             </div>
 
-            <div style={{ padding: 8 }}>
+            <center>
+            <div style={{ padding: 8, width: 200 }}>
+              <EtherInput
+                onChange={value => {
+                  setAmount(value);
+                }}
+              />
               <Button
                 type={balanceStaked ? "success" : "primary"}
                 onClick={() => {
-                  tx(writeContracts.Staker.stake({ value: ethers.utils.parseEther("0.5") }));
+                  tx(writeContracts.Staker.stake({ value: ethers.utils.parseEther(amount) }));
                 }}
               >
-                🥩 Stake 0.5 ether!
+                🥩 Stake!
               </Button>
             </div>
+            </center>
 
             {/*
                 🎛 this scaffolding is full of commonly used components
@@ -626,7 +633,6 @@ function App(props) {
         </Switch>
       </BrowserRouter>
 
-      <ThemeSwitch />
 
       {/* 👨‍💼 Your account is in the top right with a wallet at connect options */}
       <div style={{ position: "fixed", textAlign: "right", right: 0, top: 0, padding: 10 }}>
