@@ -10,7 +10,7 @@ contract ExampleExternalContract is Ownable, AccessControl {
 
   bool public completed;
 
-  function setupWithdrawRole(address withdrawer) public {
+  function setupWithdrawRole(address withdrawer) public onlyOwner {
     _setupRole(WITHDRAW_ROLE, withdrawer);
   }
 

@@ -12,7 +12,7 @@ contract Staker {
   mapping(address => uint256) public balances;
   mapping(address => uint256) public depositTimestamps;
 
-  // 10% per second, for testing purposes
+  // 2% per second, for testing purposes
   uint256 public constant fixedApr = 630720 ether;
   uint256 public constant rewardRatePerSecond = fixedApr / 365 / 24 / 3600;
   uint256 public withdrawalDeadline;
